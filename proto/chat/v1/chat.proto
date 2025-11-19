@@ -1,0 +1,83 @@
+syntax = "proto3"
+
+package chat.v1
+
+option go_package = "github.com/qinyul/gochat/chatv1;chatv1";
+
+import "google/protobuf/timestamp.proto";
+
+enum EventType {
+    EVENT_TYPE_UNSPECIFIED = 0;
+    EVENT_TYPE_MESSAGE = 1;
+    EVENT_TYPE_TYPING = 2;
+    EVENT_TYPE_PRESENCE = 3;
+    EVENT_TYPE_CONTROL = 4;
+}
+
+message ChatMessage {
+    string id = 1;
+    string room_id = 2;
+    string sender_id = 3;
+    string text = 4;
+    google.protobuf.Timestamp created_at = 5;
+}
+
+message TypingEvent {
+    string room_id = 1;
+    string user_id = 2;
+    bool is_typing = 3;
+}
+
+message PresenceEvent {
+    string user_id = 1;
+    bool online = 2;
+}
+
+enum ControlType {
+    Control_UNKNOWN = 0;
+    Control_JOIN = 1;
+    Control_LEAVE = 2;
+    Control_PING = 3;
+}
+
+message StreamEvent {
+    EventType = 1;
+    
+    oneof payload {
+        ChatMessage message = 2;
+        TypingEvent typing = 3;
+        PresenceEvent presence = 4;
+        ControlEvent control = 3;
+    }
+}
+
+message SendMessageRequest {
+    string room_id = 1;
+    string sender_id = 2;
+    string text = 3;
+}
+
+message SendmessageResponse {
+    ChatMessage message = 1;
+}
+
+message GetMessageRequest {
+    string room_id = 1;
+    int32 limit = 2;
+}
+
+message GetmessagesResponse {
+    repeated ChatMessage message = 1;
+}
+
+message StreamRequest {
+    repeated string room_ids = 1;
+}
+
+service ChatService {
+    rpc sendMessage(SendmessageRequest) returns (SendmessageResponse);
+    
+    rpc Getmessages(GetMessageRequest) returns (GetmessagesResponse);
+    
+    rpc Stream(StreamRequest) returns (stream StreamEvent);
+}
