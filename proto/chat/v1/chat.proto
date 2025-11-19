@@ -1,8 +1,8 @@
-syntax = "proto3"
+syntax = "proto3";
 
-package chat.v1
+package chat.v1;
 
-option go_package = "github.com/qinyul/gochat/chatv1;chatv1";
+option go_package = "gen/go/chat/chatv1;chatv1";
 
 import "google/protobuf/timestamp.proto";
 
@@ -41,20 +41,23 @@ enum ControlType {
 }
 
 message StreamEvent {
-    EventType = 1;
+    EventType type = 1;
     
     oneof payload {
         ChatMessage message = 2;
         TypingEvent typing = 3;
         PresenceEvent presence = 4;
-        ControlEvent control = 3;
+        ControlEvent control = 10;
     }
 }
 
+message ControlEvent {
+  ControlType type = 1;
+  string room_id = 2;
+}
+
 message SendMessageRequest {
-    string room_id = 1;
-    string sender_id = 2;
-    string text = 3;
+  ChatMessage message = 1; // server should fill id/timestamp if absent
 }
 
 message SendmessageResponse {
@@ -75,7 +78,7 @@ message StreamRequest {
 }
 
 service ChatService {
-    rpc sendMessage(SendmessageRequest) returns (SendmessageResponse);
+    rpc sendMessage(SendMessageRequest) returns (SendmessageResponse);
     
     rpc Getmessages(GetMessageRequest) returns (GetmessagesResponse);
     
