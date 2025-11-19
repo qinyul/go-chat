@@ -775,7 +775,7 @@ const file_chat_proto_rawDesc = "" +
 	"\vChatService\x12H\n" +
 	"\vsendMessage\x12\x1b.chat.v1.SendMessageRequest\x1a\x1c.chat.v1.SendmessageResponse\x12G\n" +
 	"\vGetmessages\x12\x1a.chat.v1.GetMessageRequest\x1a\x1c.chat.v1.GetmessagesResponse\x128\n" +
-	"\x06Stream\x12\x16.chat.v1.StreamRequest\x1a\x14.chat.v1.StreamEvent0\x01B\x1bZ\x19gen/go/chat/chatv1;chatv1b\x06proto3"
+	"\x06Stream\x12\x14.chat.v1.StreamEvent\x1a\x14.chat.v1.StreamEvent(\x010\x01B\x1bZ\x19gen/go/chat/chatv1;chatv1b\x06proto3"
 
 var (
 	file_chat_proto_rawDescOnce sync.Once
@@ -819,7 +819,7 @@ var file_chat_proto_depIdxs = []int32{
 	2,  // 9: chat.v1.GetmessagesResponse.message:type_name -> chat.v1.ChatMessage
 	7,  // 10: chat.v1.ChatService.sendMessage:input_type -> chat.v1.SendMessageRequest
 	9,  // 11: chat.v1.ChatService.Getmessages:input_type -> chat.v1.GetMessageRequest
-	11, // 12: chat.v1.ChatService.Stream:input_type -> chat.v1.StreamRequest
+	5,  // 12: chat.v1.ChatService.Stream:input_type -> chat.v1.StreamEvent
 	8,  // 13: chat.v1.ChatService.sendMessage:output_type -> chat.v1.SendmessageResponse
 	10, // 14: chat.v1.ChatService.Getmessages:output_type -> chat.v1.GetmessagesResponse
 	5,  // 15: chat.v1.ChatService.Stream:output_type -> chat.v1.StreamEvent

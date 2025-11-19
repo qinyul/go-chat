@@ -78,9 +78,9 @@ message StreamRequest {
 }
 
 service ChatService {
-    rpc sendMessage(SendMessageRequest) returns (SendmessageResponse);
+    rpc SendMessage(SendMessageRequest) returns (SendmessageResponse);
     
     rpc Getmessages(GetMessageRequest) returns (GetmessagesResponse);
     
-    rpc Stream(StreamRequest) returns (stream StreamEvent);
+    rpc Stream(stream StreamEvent) returns (stream StreamEvent);
 }
