@@ -35,6 +35,7 @@ func NewChatServer() *ChatServer {
 }
 
 func (s *ChatServer) SendMessage(ctx context.Context, req *chatv1.SendMessageRequest) (*chatv1.SendmessageResponse, error) {
+	fmt.Println("RPC SendMessage:: starting")
 	if req == nil || req.Message == nil {
 		return nil, status.Error(codes.InvalidArgument, "message is required")
 	}

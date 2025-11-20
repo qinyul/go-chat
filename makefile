@@ -38,3 +38,12 @@ proto:
 clean:
 	find $(OUT_DIR) -name ".pb.go" -type f - delete
 	@echo "Cleaned generated files."
+
+server: 
+	go run cmd/server/main.go
+
+client: 
+	go run cmd/client/main.go
+
+websocket: 
+	go run cmd/websocket/main.go

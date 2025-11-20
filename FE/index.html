@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Chat App</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        max-width: 600px;
+        margin: 50px auto;
+      }
+      #chat {
+        border: 1px solid #ccc;
+        padding: 10px;
+        height: 300px;
+        overflow-y: scroll;
+      }
+      #chat div {
+        margin-bottom: 10px;
+      }
+      #message {
+        width: 80%;
+      }
+      #send {
+        width: 18%;
+      }
+      .system {
+        font-style: italic;
+        color: #555;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Chat App</h1>
+    <div id="chat"></div>
+    <input type="text" id="message" placeholder="Type your message" />
+    <button id="send">Send</button>
+
+    <script>
+      // Must match your protobuf numeric enum
+      const EventType = {
+        EVENT_TYPE_UNSPECIFIED: 0,
+        EVENT_TYPE_MESSAGE: 1,
+        EVENT_TYPE_TYPING: 2,
+        EVENT_TYPE_PRESENCE: 3,
+        EVENT_TYPE_CONTROL: 4,
+      };
+
+      const chatDiv = document.getElementById("chat");
+      const messageInput = document.getElementById("message");
+      const sendButton = document.getElementById("send");
+
+      // Simulate a random sender ID so "other people" appear different
+      const ROOM_ID = "default";
+      const SENDER_ID = "user_" + Math.floor(Math.random() * 9999);
+
+      // WebSocket connection
+      const ws = new WebSocket("ws://localhost:8080/ws");
+
+      ws.onopen = () => appendSystem("Connected to server as " + SENDER_ID);
+
+      ws.onmessage = (event) => {
+        console.log("WS IN:", event.data);
+
+        let msg;
+        try {
+          msg = JSON.parse(event.data);
+        } catch (e) {
+          console.error("JSON parse error", e);
+          return;
+        }
+
+        // --- Incoming StreamEvent from server ---
+        if (msg.type === "StreamEvent") {
+          const evt = msg.data;
+
+          switch (evt.type) {
+            case EventType.EVENT_TYPE_MESSAGE:
+              appendMessage(evt.message.senderId, evt.message.text);
+              break;
+
+            case EventType.EVENT_TYPE_TYPING:
+              appendSystem(
+                `${evt.typing.userId} is ${
+                  evt.typing.isTyping ? "typing..." : "idle"
+                }`
+              );
+              break;
+
+            case EventType.EVENT_TYPE_PRESENCE:
+              appendSystem(
+                `${evt.presence.userId} is ${
+                  evt.presence.online ? "online" : "offline"
+                }`
+              );
+              break;
+
+            case EventType.EVENT_TYPE_CONTROL:
+              appendSystem(
+                `Control event ${evt.control.type} in room ${evt.control.roomId}`
+              );
+              break;
+
+            default:
+              console.warn("Unknown StreamEvent type:", evt);
+          }
+
+          return;
+        }
+
+        // --- Error from server ---
+        if (msg.error) {
+          appendSystem("Server error: " + msg.error);
+          return;
+        }
+
+        console.warn("Unknown WS message", msg);
+      };
+
+      ws.onclose = () => appendSystem("Disconnected from server");
+      ws.onerror = (err) => console.error("WebSocket error", err);
+
+      // --------------------------
+      // SEND TYPING EVENT
+      // --------------------------
+      let typingTimeout;
+
+      function sendTyping(isTyping) {
+        const evt = {
+          type: EventType.EVENT_TYPE_TYPING,
+          typing: {
+            roomId: ROOM_ID,
+            userId: SENDER_ID,
+            isTyping: isTyping,
+          },
+        };
+
+        ws.send(JSON.stringify(evt));
+
+        if (isTyping) {
+          clearTimeout(typingTimeout);
+          typingTimeout = setTimeout(() => sendTyping(false), 2000);
+        }
+      }
+
+      // --------------------------
+      // SEND CHAT MESSAGE
+      // --------------------------
+      function sendMessage() {
+        const text = messageInput.value.trim();
+        if (!text) return;
+
+        const req = {
+          type: "SendMessage", // backend checks this string
+          message: {
+            roomId: ROOM_ID,
+            senderId: SENDER_ID,
+            text: text,
+          },
+        };
+
+        ws.send(JSON.stringify(req));
+        messageInput.value = "";
+        sendTyping(false);
+      }
+
+      sendButton.onclick = sendMessage;
+      messageInput.onkeypress = (e) => {
+        if (e.key === "Enter") {
+          sendMessage();
+        } else {
+          sendTyping(true);
+        }
+      };
+
+      // --------------------------
+      // UI HELPERS
+      // --------------------------
+      function appendMessage(user, text) {
+        const div = document.createElement("div");
+        div.textContent = `${user}: ${text}`;
+        chatDiv.appendChild(div);
+        chatDiv.scrollTop = chatDiv.scrollHeight;
+      }
+
+      function appendSystem(text) {
+        const div = document.createElement("div");
+        div.textContent = text;
+        div.className = "system";
+        chatDiv.appendChild(div);
+        chatDiv.scrollTop = chatDiv.scrollHeight;
+      }
+    </script>
+  </body>
+</html>

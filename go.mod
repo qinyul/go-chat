@@ -6,6 +6,7 @@ require (
 	connectrpc.com/vanguard v0.3.0
 	github.com/go-chi/chi/v5 v5.2.3
 	github.com/google/uuid v1.6.0
+	github.com/gorilla/websocket v1.5.3
 	golang.org/x/net v0.46.1-0.20251013234738-63d1a5100f82
 	google.golang.org/grpc v1.77.0
 	google.golang.org/protobuf v1.36.10
