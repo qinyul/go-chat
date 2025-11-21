@@ -33,11 +33,10 @@ message PresenceEvent {
     bool online = 2;
 }
 
-enum ControlType {
-    Control_UNKNOWN = 0;
-    Control_JOIN = 1;
-    Control_LEAVE = 2;
-    Control_PING = 3;
+enum ControlAction {
+    CONTROL_ACTION_UNSPECIFIED = 0;
+    CONTROL_ACTION_START_STREAM = 1;  // request server to begin streaming
+    CONTROL_ACTION_STOP_STREAM = 2;   // optional: unsubscribe
 }
 
 message StreamEvent {
@@ -52,7 +51,7 @@ message StreamEvent {
 }
 
 message ControlEvent {
-  ControlType type = 1;
+  ControlAction action = 1;
   string room_id = 2;
 }
 

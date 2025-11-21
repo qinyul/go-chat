@@ -22,14 +22,13 @@ import (
 	"github.com/qinyul/go-chat/gen/go/chat/chatv1"
 )
 
-
 type WSRequest struct {
-	Type string `json:"type"`
-	   Message struct {
-        RoomID   string `json:"room_id"`
-        SenderID string `json:"sender_id"`
-        Text     string `json:"text"`
-    } `json:"message"`
+	Type    string `json:"type"`
+	Message struct {
+		RoomID   string `json:"room_id"`
+		SenderID string `json:"sender_id"`
+		Text     string `json:"text"`
+	} `json:"message"`
 }
 
 type WSError struct {
@@ -37,22 +36,21 @@ type WSError struct {
 }
 
 type WSEnvelope struct {
-	Type string `json:"type"`
+	Type string      `json:"type"`
 	Data interface{} `json:"data"`
 }
 
 type Server struct {
 	grpcClient chatv1.ChatServiceClient
-	upgrader websocket.Upgrader
+	upgrader   websocket.Upgrader
 }
 
-
- func main() {
+func main() {
 	vCodec := vanguard.JSONCodec{}
 	grpcCodec := vanguardgrpc.NewCodec(vCodec)
 	encoding.RegisterCodec(grpcCodec)
 
-		// TLS for gRPC connection
+	// TLS for gRPC connection
 	creds, err := credentials.NewClientTLSFromFile("server.crt", "localhost")
 	if err != nil {
 		log.Fatalf("failed to load TLS cert: %v", err)
@@ -71,39 +69,58 @@ type Server struct {
 	s := &Server{
 		grpcClient: chatv1.NewChatServiceClient(conn),
 		upgrader: websocket.Upgrader{
-			CheckOrigin: func(r *http.Request) bool {return true},
+			CheckOrigin: func(r *http.Request) bool { return true },
 		},
 	}
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
-	r.Get("/ws",s.handleWS)
+	r.Get("/ws", s.handleWS)
 
-	go func ()  {
+	go func() {
 		log.Println("Websocket hybrid client listening on :8080")
-		http.ListenAndServe(":8080",r)
+		http.ListenAndServe(":8080", r)
 	}()
 
 	// Catch Ctrl+C
-    stop := make(chan os.Signal, 1)
-    signal.Notify(stop, os.Interrupt)
-    <-stop
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt)
+	<-stop
 
-    log.Println("Shutting down...")
- }
+	log.Println("Shutting down...")
+}
 
 // ----- WebSocket handler -----
 func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
-	conn, err := s.upgrader.Upgrade(w,r,nil)
+	conn, err := s.upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println("ws upgrade error:",err)
+		log.Println("ws upgrade error:", err)
 		return
 	}
 
 	defer conn.Close()
 	log.Println("Client connected to Websocket")
 
-	interupt := make(chan os.Signal,1)
+	// Create an independent context for the gRPC stream(s).
+	// When the HTTP request context is Done (client closed), cancel this stream ctx.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		<-r.Context().Done()
+		cancel()
+	}()
+
+	// Open one long-lived gRPC stream for this WS connection.
+	stream, err := s.grpcClient.Stream(ctx)
+
+	if err != nil {
+		log.Println("failed to open gRPC stream:", err)
+		s.sendError(conn, "internal: cannot open backend stream")
+		return
+	}
+
+	defer stream.CloseSend()
+	interupt := make(chan os.Signal, 1)
 	signal.Notify(interupt, os.Interrupt)
 
 	for {
@@ -114,64 +131,78 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 		default:
 			_, msg, err := conn.ReadMessage()
 			if err != nil {
-				log.Println("ws read error:",err)
+				log.Println("ws read error:", err)
 				return
 			}
 
 			var req WSRequest
 
-			if err := json.Unmarshal(msg,&req); err != nil {
-				s.sendError(conn,"invalid json")
+			if err := json.Unmarshal(msg, &req); err != nil {
+				s.sendError(conn, "invalid json")
 			}
-			fmt.Println("incoming send message payload: ",string(msg))
-			s.processWSRequest(conn,req)
+			fmt.Println("incoming send message payload: ", string(msg))
+			s.processWSRequest(conn, req, stream)
 		}
 	}
 }
 
 // ----- WS Request Processor -----
-func (s *Server) processWSRequest(conn *websocket.Conn, req WSRequest) {
-	ctx, cancel := context.WithTimeout(context.Background(), 3 * time.Second)
+func (s *Server) processWSRequest(conn *websocket.Conn, req WSRequest, stream grpc.BidiStreamingClient[chatv1.StreamEvent, chatv1.StreamEvent]) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	switch req.Type {
 	case "SendMessage":
 		// Create ChatMessage
-	reqProto := &chatv1.SendMessageRequest{
-    Message: &chatv1.ChatMessage{
-        RoomId:   req.Message.RoomID,
-        SenderId: req.Message.SenderID,
-        Text:     req.Message.Text,
-    },
-}
+		reqProto := &chatv1.SendMessageRequest{
+			Message: &chatv1.ChatMessage{
+				RoomId:   req.Message.RoomID,
+				SenderId: req.Message.SenderID,
+				Text:     req.Message.Text,
+			},
+		}
 
 		log.Println("sending message...")
-		resp, err := s.grpcClient.SendMessage(ctx,reqProto)
+		resp, err := s.grpcClient.SendMessage(ctx, reqProto)
 		if err != nil {
 			s.sendError(conn, err.Error())
 			return
 		}
 
-		s.sendWS(conn, "SendMessageResult",resp)
+		s.sendWS(conn, "SendMessageResult", resp)
 
 	case "GetMessages":
 		var r chatv1.GetMessageRequest
 		b, _ := json.Marshal(req.Message)
-		json.Unmarshal(b,&r)
+		json.Unmarshal(b, &r)
 
-		resp, err := s.grpcClient.Getmessages(ctx,&r)
+		resp, err := s.grpcClient.Getmessages(ctx, &r)
 		if err != nil {
 			s.sendError(conn, err.Error())
 			return
 		}
 
-		s.sendWS(conn, "GetMessageResult",resp)
+		s.sendWS(conn, "GetMessageResult", resp)
 
+	case "StreamEvent":
+		evt := &chatv1.StreamEvent{
+			Type: chatv1.EventType_EVENT_TYPE_MESSAGE,
+			Payload: &chatv1.StreamEvent_Message{
+				Message: &chatv1.ChatMessage{
+					RoomId:   req.Message.RoomID,
+					SenderId: req.Message.SenderID,
+					Text:     "test",
+				},
+			},
+		}
+
+		if err := stream.Send(evt); err != nil {
+			s.sendError(conn, "failed to forward steam event")
+			return
+		}
 	default:
-		s.sendError(conn,"unknow request type: "+ req.Type)
+		s.sendError(conn, "unknow request type: "+req.Type)
 	}
-
-
 
 }
 
@@ -181,10 +212,10 @@ func (s *Server) sendWS(conn *websocket.Conn, msgType string, data interface{}) 
 		Data: data,
 	}
 	b, _ := json.Marshal(out)
-	conn.WriteMessage(websocket.TextMessage,b)
+	conn.WriteMessage(websocket.TextMessage, b)
 }
 
 func (s *Server) sendError(conn *websocket.Conn, msg string) {
 	b, _ := json.Marshal(WSError{Error: msg})
-	conn.WriteMessage(websocket.TextMessage,b)
+	conn.WriteMessage(websocket.TextMessage, b)
 }

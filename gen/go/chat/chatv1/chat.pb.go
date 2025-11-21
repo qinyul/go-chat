@@ -77,55 +77,52 @@ func (EventType) EnumDescriptor() ([]byte, []int) {
 	return file_chat_proto_rawDescGZIP(), []int{0}
 }
 
-type ControlType int32
+type ControlAction int32
 
 const (
-	ControlType_Control_UNKNOWN ControlType = 0
-	ControlType_Control_JOIN    ControlType = 1
-	ControlType_Control_LEAVE   ControlType = 2
-	ControlType_Control_PING    ControlType = 3
+	ControlAction_CONTROL_ACTION_UNSPECIFIED  ControlAction = 0
+	ControlAction_CONTROL_ACTION_START_STREAM ControlAction = 1 // request server to begin streaming
+	ControlAction_CONTROL_ACTION_STOP_STREAM  ControlAction = 2 // optional: unsubscribe
 )
 
-// Enum value maps for ControlType.
+// Enum value maps for ControlAction.
 var (
-	ControlType_name = map[int32]string{
-		0: "Control_UNKNOWN",
-		1: "Control_JOIN",
-		2: "Control_LEAVE",
-		3: "Control_PING",
+	ControlAction_name = map[int32]string{
+		0: "CONTROL_ACTION_UNSPECIFIED",
+		1: "CONTROL_ACTION_START_STREAM",
+		2: "CONTROL_ACTION_STOP_STREAM",
 	}
-	ControlType_value = map[string]int32{
-		"Control_UNKNOWN": 0,
-		"Control_JOIN":    1,
-		"Control_LEAVE":   2,
-		"Control_PING":    3,
+	ControlAction_value = map[string]int32{
+		"CONTROL_ACTION_UNSPECIFIED":  0,
+		"CONTROL_ACTION_START_STREAM": 1,
+		"CONTROL_ACTION_STOP_STREAM":  2,
 	}
 )
 
-func (x ControlType) Enum() *ControlType {
-	p := new(ControlType)
+func (x ControlAction) Enum() *ControlAction {
+	p := new(ControlAction)
 	*p = x
 	return p
 }
 
-func (x ControlType) String() string {
+func (x ControlAction) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (ControlType) Descriptor() protoreflect.EnumDescriptor {
+func (ControlAction) Descriptor() protoreflect.EnumDescriptor {
 	return file_chat_proto_enumTypes[1].Descriptor()
 }
 
-func (ControlType) Type() protoreflect.EnumType {
+func (ControlAction) Type() protoreflect.EnumType {
 	return &file_chat_proto_enumTypes[1]
 }
 
-func (x ControlType) Number() protoreflect.EnumNumber {
+func (x ControlAction) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use ControlType.Descriptor instead.
-func (ControlType) EnumDescriptor() ([]byte, []int) {
+// Deprecated: Use ControlAction.Descriptor instead.
+func (ControlAction) EnumDescriptor() ([]byte, []int) {
 	return file_chat_proto_rawDescGZIP(), []int{1}
 }
 
@@ -441,7 +438,7 @@ func (*StreamEvent_Control) isStreamEvent_Payload() {}
 
 type ControlEvent struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Type          ControlType            `protobuf:"varint,1,opt,name=type,proto3,enum=chat.v1.ControlType" json:"type,omitempty"`
+	Action        ControlAction          `protobuf:"varint,1,opt,name=action,proto3,enum=chat.v1.ControlAction" json:"action,omitempty"`
 	RoomId        string                 `protobuf:"bytes,2,opt,name=room_id,json=roomId,proto3" json:"room_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -477,11 +474,11 @@ func (*ControlEvent) Descriptor() ([]byte, []int) {
 	return file_chat_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *ControlEvent) GetType() ControlType {
+func (x *ControlEvent) GetAction() ControlAction {
 	if x != nil {
-		return x.Type
+		return x.Action
 	}
-	return ControlType_Control_UNKNOWN
+	return ControlAction_CONTROL_ACTION_UNSPECIFIED
 }
 
 func (x *ControlEvent) GetRoomId() string {
@@ -746,9 +743,9 @@ const file_chat_proto_rawDesc = "" +
 	"\bpresence\x18\x04 \x01(\v2\x16.chat.v1.PresenceEventH\x00R\bpresence\x121\n" +
 	"\acontrol\x18\n" +
 	" \x01(\v2\x15.chat.v1.ControlEventH\x00R\acontrolB\t\n" +
-	"\apayload\"Q\n" +
-	"\fControlEvent\x12(\n" +
-	"\x04type\x18\x01 \x01(\x0e2\x14.chat.v1.ControlTypeR\x04type\x12\x17\n" +
+	"\apayload\"W\n" +
+	"\fControlEvent\x12.\n" +
+	"\x06action\x18\x01 \x01(\x0e2\x16.chat.v1.ControlActionR\x06action\x12\x17\n" +
 	"\aroom_id\x18\x02 \x01(\tR\x06roomId\"D\n" +
 	"\x12SendMessageRequest\x12.\n" +
 	"\amessage\x18\x01 \x01(\v2\x14.chat.v1.ChatMessageR\amessage\"E\n" +
@@ -766,14 +763,13 @@ const file_chat_proto_rawDesc = "" +
 	"\x12EVENT_TYPE_MESSAGE\x10\x01\x12\x15\n" +
 	"\x11EVENT_TYPE_TYPING\x10\x02\x12\x17\n" +
 	"\x13EVENT_TYPE_PRESENCE\x10\x03\x12\x16\n" +
-	"\x12EVENT_TYPE_CONTROL\x10\x04*Y\n" +
-	"\vControlType\x12\x13\n" +
-	"\x0fControl_UNKNOWN\x10\x00\x12\x10\n" +
-	"\fControl_JOIN\x10\x01\x12\x11\n" +
-	"\rControl_LEAVE\x10\x02\x12\x10\n" +
-	"\fControl_PING\x10\x032\xda\x01\n" +
+	"\x12EVENT_TYPE_CONTROL\x10\x04*p\n" +
+	"\rControlAction\x12\x1e\n" +
+	"\x1aCONTROL_ACTION_UNSPECIFIED\x10\x00\x12\x1f\n" +
+	"\x1bCONTROL_ACTION_START_STREAM\x10\x01\x12\x1e\n" +
+	"\x1aCONTROL_ACTION_STOP_STREAM\x10\x022\xda\x01\n" +
 	"\vChatService\x12H\n" +
-	"\vsendMessage\x12\x1b.chat.v1.SendMessageRequest\x1a\x1c.chat.v1.SendmessageResponse\x12G\n" +
+	"\vSendMessage\x12\x1b.chat.v1.SendMessageRequest\x1a\x1c.chat.v1.SendmessageResponse\x12G\n" +
 	"\vGetmessages\x12\x1a.chat.v1.GetMessageRequest\x1a\x1c.chat.v1.GetmessagesResponse\x128\n" +
 	"\x06Stream\x12\x14.chat.v1.StreamEvent\x1a\x14.chat.v1.StreamEvent(\x010\x01B\x1bZ\x19gen/go/chat/chatv1;chatv1b\x06proto3"
 
@@ -793,7 +789,7 @@ var file_chat_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
 var file_chat_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_chat_proto_goTypes = []any{
 	(EventType)(0),                // 0: chat.v1.EventType
-	(ControlType)(0),              // 1: chat.v1.ControlType
+	(ControlAction)(0),            // 1: chat.v1.ControlAction
 	(*ChatMessage)(nil),           // 2: chat.v1.ChatMessage
 	(*TypingEvent)(nil),           // 3: chat.v1.TypingEvent
 	(*PresenceEvent)(nil),         // 4: chat.v1.PresenceEvent
@@ -813,14 +809,14 @@ var file_chat_proto_depIdxs = []int32{
 	3,  // 3: chat.v1.StreamEvent.typing:type_name -> chat.v1.TypingEvent
 	4,  // 4: chat.v1.StreamEvent.presence:type_name -> chat.v1.PresenceEvent
 	6,  // 5: chat.v1.StreamEvent.control:type_name -> chat.v1.ControlEvent
-	1,  // 6: chat.v1.ControlEvent.type:type_name -> chat.v1.ControlType
+	1,  // 6: chat.v1.ControlEvent.action:type_name -> chat.v1.ControlAction
 	2,  // 7: chat.v1.SendMessageRequest.message:type_name -> chat.v1.ChatMessage
 	2,  // 8: chat.v1.SendmessageResponse.message:type_name -> chat.v1.ChatMessage
 	2,  // 9: chat.v1.GetmessagesResponse.message:type_name -> chat.v1.ChatMessage
-	7,  // 10: chat.v1.ChatService.sendMessage:input_type -> chat.v1.SendMessageRequest
+	7,  // 10: chat.v1.ChatService.SendMessage:input_type -> chat.v1.SendMessageRequest
 	9,  // 11: chat.v1.ChatService.Getmessages:input_type -> chat.v1.GetMessageRequest
 	5,  // 12: chat.v1.ChatService.Stream:input_type -> chat.v1.StreamEvent
-	8,  // 13: chat.v1.ChatService.sendMessage:output_type -> chat.v1.SendmessageResponse
+	8,  // 13: chat.v1.ChatService.SendMessage:output_type -> chat.v1.SendmessageResponse
 	10, // 14: chat.v1.ChatService.Getmessages:output_type -> chat.v1.GetmessagesResponse
 	5,  // 15: chat.v1.ChatService.Stream:output_type -> chat.v1.StreamEvent
 	13, // [13:16] is the sub-list for method output_type

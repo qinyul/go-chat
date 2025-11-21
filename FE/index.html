@@ -57,7 +57,19 @@
       // WebSocket connection
       const ws = new WebSocket("ws://localhost:8080/ws");
 
-      ws.onopen = () => appendSystem("Connected to server as " + SENDER_ID);
+      ws.onopen = () => {
+        appendSystem("Connected to server as " + SENDER_ID);
+        const req = {
+          type: "StreamEvent", // backend checks this string
+          message: {
+            room_id: ROOM_ID,
+            sender_id: SENDER_ID,
+            text: "",
+          },
+        };
+
+        ws.send(JSON.stringify(req));
+      };
 
       ws.onmessage = (event) => {
         console.log("WS IN:", event.data);
@@ -126,6 +138,7 @@
       let typingTimeout;
 
       function sendTyping(isTyping) {
+        return;
         const evt = {
           type: EventType.EVENT_TYPE_TYPING,
           typing: {
@@ -153,8 +166,8 @@
         const req = {
           type: "SendMessage", // backend checks this string
           message: {
-            roomId: ROOM_ID,
-            senderId: SENDER_ID,
+            room_id: ROOM_ID,
+            sender_id: SENDER_ID,
             text: text,
           },
         };

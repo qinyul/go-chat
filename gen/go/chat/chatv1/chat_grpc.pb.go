@@ -19,7 +19,7 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ChatService_SendMessage_FullMethodName = "/chat.v1.ChatService/sendMessage"
+	ChatService_SendMessage_FullMethodName = "/chat.v1.ChatService/SendMessage"
 	ChatService_Getmessages_FullMethodName = "/chat.v1.ChatService/Getmessages"
 	ChatService_Stream_FullMethodName      = "/chat.v1.ChatService/Stream"
 )
@@ -172,7 +172,7 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*ChatServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "sendMessage",
+			MethodName: "SendMessage",
 			Handler:    _ChatService_SendMessage_Handler,
 		},
 		{

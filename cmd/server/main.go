@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"sync"
@@ -26,6 +25,8 @@ type ChatServer struct {
 
 	mu      sync.Mutex
 	clients map[chatv1.ChatService_StreamServer]struct{}
+	// Example in-memory storage
+	messages map[string][]*chatv1.ChatMessage // room_id → list of messages
 }
 
 func NewChatServer() *ChatServer {
@@ -59,6 +60,10 @@ func (s *ChatServer) SendMessage(ctx context.Context, req *chatv1.SendMessageReq
 	}
 
 	// Store in memory (example only)
+	if s.messages == nil {
+		s.messages = make(map[string][]*chatv1.ChatMessage)
+	}
+	s.messages[msg.RoomId] = append(s.messages[msg.RoomId], msg)
 
 	fmt.Printf(`RPC Sending Message "%s"`+"\n", msg.Text)
 	// Return the full message
@@ -68,7 +73,7 @@ func (s *ChatServer) SendMessage(ctx context.Context, req *chatv1.SendMessageReq
 }
 
 // ChatStream handles bidirectional streaming
-func (s *ChatServer) ChatStream(stream chatv1.ChatService_StreamServer) error {
+func (s *ChatServer) Stream(stream chatv1.ChatService_StreamServer) error {
 	// Register client
 	s.mu.Lock()
 	s.clients[stream] = struct{}{}
@@ -83,15 +88,20 @@ func (s *ChatServer) ChatStream(stream chatv1.ChatService_StreamServer) error {
 
 	for {
 		event, err := stream.Recv()
-		if err == io.EOF {
-			log.Println("Client dissconected")
-			return nil
-		}
 		if err != nil {
+			st, ok := status.FromError(err)
+			if ok {
+				switch st.Code() {
+				case codes.Canceled, codes.Unavailable:
+					log.Println("client stream closed:", st.Message())
+					return nil
+				}
+			}
 			log.Printf("Error receiving from client: %v", err)
 			return err
 		}
 
+		log.Println("Handling streaming payload")
 		switch payload := event.Payload.(type) {
 		case *chatv1.StreamEvent_Message:
 			msg := payload.Message
@@ -107,7 +117,7 @@ func (s *ChatServer) ChatStream(stream chatv1.ChatService_StreamServer) error {
 
 		case *chatv1.StreamEvent_Control:
 			c := payload.Control
-			log.Printf("[control] type=%v room=%s", c.Type, c.RoomId)
+			log.Printf("[control] type=%v room=%s", c.Action, c.RoomId)
 
 		default:
 			log.Printf("unknown event payload: %T", payload)
@@ -119,6 +129,7 @@ func (s *ChatServer) ChatStream(stream chatv1.ChatService_StreamServer) error {
 
 // broadcast sends event to all clients except the sender
 func (s *ChatServer) broadcast(event *chatv1.StreamEvent, sender chatv1.ChatService_StreamServer) {
+	log.Println("incoming broadcast request")
 	s.mu.Lock()
 	clientsCopy := make([]chatv1.ChatService_StreamServer, 0, len(s.clients))
 	for c := range s.clients {
