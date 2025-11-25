@@ -78,52 +78,77 @@ func (s *ChatServer) Stream(stream chatv1.ChatService_StreamServer) error {
 	s.mu.Lock()
 	s.clients[stream] = struct{}{}
 	s.mu.Unlock()
+	log.Println("Client connected to stream")
 
-	defer func() {
-		// Unregister client
-		s.mu.Lock()
-		delete(s.clients, stream)
-		s.mu.Unlock()
+	incoming := make(chan *chatv1.StreamEvent)
+	errs := make(chan error)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// --- Recv goroutine ---
+	go func() {
+		for {
+			event, err := stream.Recv()
+			if err != nil {
+				st, ok := status.FromError(err)
+				if ok {
+					switch st.Code() {
+					case codes.Canceled, codes.Unavailable:
+						log.Println("client stream closed:", st.Message())
+						errs <- nil
+						return
+					}
+				}
+				log.Println("Error receiving from client:", err)
+				errs <- err
+				return
+			}
+
+			select {
+			case incoming <- event:
+			case <-ctx.Done():
+				log.Println("stream context canceled")
+				return
+			}
+		}
 	}()
 
 	for {
-		event, err := stream.Recv()
-		if err != nil {
-			st, ok := status.FromError(err)
-			if ok {
-				switch st.Code() {
-				case codes.Canceled, codes.Unavailable:
-					log.Println("client stream closed:", st.Message())
-					return nil
-				}
+		select {
+		case evt := <-incoming:
+			log.Println("Handling streaming payload")
+			switch payload := evt.Payload.(type) {
+			case *chatv1.StreamEvent_Message:
+				msg := payload.Message
+				log.Printf("[msg] %s: %s", msg.SenderId, msg.Text)
+
+			case *chatv1.StreamEvent_Typing:
+				t := payload.Typing
+				log.Printf("[typing] user=%s room=%s is_typing=%v", t.UserId, t.RoomId, t.IsTyping)
+
+			case *chatv1.StreamEvent_Presence:
+				p := payload.Presence
+				log.Printf("[presence] user=%s online=%v", p.UserId, p.Online)
+
+			case *chatv1.StreamEvent_Control:
+				c := payload.Control
+				log.Printf("[control] type=%v room=%s", c.Action, c.RoomId)
+
+			default:
+				log.Printf("unknown event payload: %T", payload)
 			}
-			log.Printf("Error receiving from client: %v", err)
+			s.broadcast(evt, stream)
+		case err := <-errs:
+			if err != nil {
+				log.Println("stream loop exited with error:", err)
+			}
 			return err
+		case <-ctx.Done():
+			log.Println("WS closed, exiting main loop")
+			return nil
 		}
 
-		log.Println("Handling streaming payload")
-		switch payload := event.Payload.(type) {
-		case *chatv1.StreamEvent_Message:
-			msg := payload.Message
-			log.Printf("[msg] %s: %s", msg.SenderId, msg.Text)
-
-		case *chatv1.StreamEvent_Typing:
-			t := payload.Typing
-			log.Printf("[typing] user=%s room=%s is_typing=%v", t.UserId, t.RoomId, t.IsTyping)
-
-		case *chatv1.StreamEvent_Presence:
-			p := payload.Presence
-			log.Printf("[presence] user=%s online=%v", p.UserId, p.Online)
-
-		case *chatv1.StreamEvent_Control:
-			c := payload.Control
-			log.Printf("[control] type=%v room=%s", c.Action, c.RoomId)
-
-		default:
-			log.Printf("unknown event payload: %T", payload)
-		}
-
-		s.broadcast(event, stream)
 	}
 }
 

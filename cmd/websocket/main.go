@@ -120,6 +120,18 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defer stream.CloseSend()
+
+	go func() {
+		for {
+			event, err := stream.Recv()
+			if err != nil {
+				log.Println("gRPC stream closed", err)
+				return
+			}
+			s.sendWS(conn, "StreamEvent", event)
+		}
+	}()
+
 	interupt := make(chan os.Signal, 1)
 	signal.Notify(interupt, os.Interrupt)
 
@@ -183,25 +195,6 @@ func (s *Server) processWSRequest(conn *websocket.Conn, req WSRequest, stream gr
 		}
 
 		s.sendWS(conn, "GetMessageResult", resp)
-
-	case "StreamEvent":
-		evt := &chatv1.StreamEvent{
-			Type: chatv1.EventType_EVENT_TYPE_MESSAGE,
-			Payload: &chatv1.StreamEvent_Message{
-				Message: &chatv1.ChatMessage{
-					RoomId:   req.Message.RoomID,
-					SenderId: req.Message.SenderID,
-					Text:     "test",
-				},
-			},
-		}
-
-		if err := stream.Send(evt); err != nil {
-			s.sendError(conn, "failed to forward steam event")
-			return
-		}
-	default:
-		s.sendError(conn, "unknow request type: "+req.Type)
 	}
 
 }
