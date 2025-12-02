@@ -124,6 +124,7 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		for {
 			event, err := stream.Recv()
+			log.Println("Recv payload:", event)
 			if err != nil {
 				log.Println("gRPC stream closed", err)
 				return
@@ -165,23 +166,11 @@ func (s *Server) processWSRequest(conn *websocket.Conn, req WSRequest, stream gr
 
 	switch req.Type {
 	case "SendMessage":
-		// Create ChatMessage
-		reqProto := &chatv1.SendMessageRequest{
-			Message: &chatv1.ChatMessage{
-				RoomId:   req.Message.RoomID,
-				SenderId: req.Message.SenderID,
-				Text:     req.Message.Text,
-			},
-		}
-
-		log.Println("sending message...")
-		resp, err := s.grpcClient.SendMessage(ctx, reqProto)
-		if err != nil {
-			s.sendError(conn, err.Error())
+		evt := toProtoStreamEvent(&req)
+		if err := stream.Send(evt); err != nil {
+			log.Println("stream event send error:", err)
 			return
 		}
-
-		s.sendWS(conn, "SendMessageResult", resp)
 
 	case "GetMessages":
 		var r chatv1.GetMessageRequest
@@ -195,6 +184,14 @@ func (s *Server) processWSRequest(conn *websocket.Conn, req WSRequest, stream gr
 		}
 
 		s.sendWS(conn, "GetMessageResult", resp)
+
+	case "StreamEvent":
+		log.Println("WS: Sending stream event")
+		evt := toProtoStreamEvent(&req)
+		if err := stream.Send(evt); err != nil {
+			log.Println("stream event send error:", err)
+			return
+		}
 	}
 
 }
@@ -211,4 +208,17 @@ func (s *Server) sendWS(conn *websocket.Conn, msgType string, data interface{}) 
 func (s *Server) sendError(conn *websocket.Conn, msg string) {
 	b, _ := json.Marshal(WSError{Error: msg})
 	conn.WriteMessage(websocket.TextMessage, b)
+}
+
+func toProtoStreamEvent(req *WSRequest) *chatv1.StreamEvent {
+	return &chatv1.StreamEvent{
+		Type: chatv1.EventType_EVENT_TYPE_MESSAGE,
+		Payload: &chatv1.StreamEvent_Message{
+			Message: &chatv1.ChatMessage{
+				RoomId:   req.Message.RoomID,
+				SenderId: req.Message.SenderID,
+				Text:     req.Message.Text,
+			},
+		},
+	}
 }

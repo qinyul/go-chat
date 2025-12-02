@@ -89,6 +89,7 @@ func (s *ChatServer) Stream(stream chatv1.ChatService_StreamServer) error {
 	// --- Recv goroutine ---
 	go func() {
 		for {
+			log.Println("Waiting for client message...")
 			event, err := stream.Recv()
 			if err != nil {
 				st, ok := status.FromError(err)
@@ -107,6 +108,7 @@ func (s *ChatServer) Stream(stream chatv1.ChatService_StreamServer) error {
 
 			select {
 			case incoming <- event:
+				log.Println("Recv payload:", event)
 			case <-ctx.Done():
 				log.Println("stream context canceled")
 				return
@@ -115,6 +117,7 @@ func (s *ChatServer) Stream(stream chatv1.ChatService_StreamServer) error {
 	}()
 
 	for {
+		log.Println("testing")
 		select {
 		case evt := <-incoming:
 			log.Println("Handling streaming payload")
@@ -166,6 +169,7 @@ func (s *ChatServer) broadcast(event *chatv1.StreamEvent, sender chatv1.ChatServ
 		if client == sender {
 			continue
 		}
+		log.Println("WS Server Sending event")
 		if err := client.Send(event); err != nil {
 			log.Printf("Failed to send message, removing client: %v", err)
 			// Remove disconnected client

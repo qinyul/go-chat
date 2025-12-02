@@ -64,7 +64,7 @@
           message: {
             room_id: ROOM_ID,
             sender_id: SENDER_ID,
-            text: "",
+            text: `${SENDER_ID} join chat`,
           },
         };
 
@@ -88,7 +88,8 @@
 
           switch (evt.type) {
             case EventType.EVENT_TYPE_MESSAGE:
-              appendMessage(evt.message.senderId, evt.message.text);
+              const { Message: message } = evt.Payload;
+              appendMessage(message.sender_id, message.text);
               break;
 
             case EventType.EVENT_TYPE_TYPING:
