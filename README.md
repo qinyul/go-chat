@@ -1,0 +1,1 @@
+I’m experimenting with a hybrid gRPC Stream + Websocket setup using Vanguard. By enabling Vanguard’s JSON codec,the request-body encoding and routing between REST and gRPC becomes much more seamless than traditional approaches. It’s been an interesting workflow so far — I’ve got a few more ideas brewing, but I’ll keep them under wraps for now 
